@@ -1,0 +1,10 @@
+services:
+  mariadb:
+    image: mariadb:latest
+    ports:
+      - "3306:3306"
+    environment:
+      - MARIADB_ROOT_PASSWORD=asdf
+      - MARIADB_USER=user
+      - MARIADB_PASSWORD=user
+      - MARIADB_DATABASE=database
