@@ -96,7 +96,7 @@ async fn insert(
     .await
     {
         Ok(_) => {
-            tracing::info!("Successfully entered data into database!");
+            tracing::info!(co2 = q.kohlenstoff, t = q.temperatur, raum = q.raum_id, "Successfully entered data into database!");
             (StatusCode::OK, "Success".to_string())
         }
         Err(e) => {
