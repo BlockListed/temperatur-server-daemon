@@ -9,6 +9,11 @@ jobs:
       - uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
+      - name: cache
+        uses: actions/cache@v3
+        with:
+          path: target/
+          key: ${{ runner.os }}-build
       - uses: actions-rs/cargo@v1
         name: Build (x86_64)
         with:
