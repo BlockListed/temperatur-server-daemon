@@ -1,0 +1,13 @@
+{
+  "db": "MySQL",
+  "a006cc782350efdb978819a549fa729cd5536934b1bcdca042e5cd2f9b944263": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 4
+      }
+    },
+    "query": "INSERT INTO energy (zeit, kohlenstoff, temperatur, raum_id) values (?, ?, ?, ?)"
+  }
+}
