@@ -5,3 +5,4 @@ Description=Server für Temperatur Messgerät Projekt (Aaron <llpvbel7h@mozmail.
 Type=simple
 Environment="DATABASE_URL=mysql://user:user@localhost/database"
 ExecStart=/usr/local/msh/bin/server-daemon "0.0.0.0:1420"
+Restart=on-failure
