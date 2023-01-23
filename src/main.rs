@@ -84,10 +84,8 @@ async fn insert(
     Query(q): Query<InsertQueryParams>,
     State(s): State<Arc<Mutex<SharedState>>>,
 ) -> (StatusCode, String) {
-    let now = Utc::now();
     match sqlx::query!(
-        "INSERT INTO energy (zeit, kohlenstoff, temperatur, raum_id) values (?, ?, ?, ?)",
-        now,
+        "INSERT INTO temperaturmessung (comessung, temperature, raum_id) values (?, ?, ?)",
         q.kohlenstoff,
         q.temperatur,
         q.raum_id
@@ -138,7 +136,7 @@ async fn main() {
         .route("/insert", post(insert))
         .with_state(state);
 
-    Server::bind(&args().nth(1).unwrap().parse().unwrap())
+    Server::bind(&args().nth(1).expect("Give argument with port to bind to. Eg. 0.0.0.0:1420").parse().unwrap())
         .serve(app.into_make_service_with_connect_info::<SocketAddr>())
         .await
         .unwrap();
