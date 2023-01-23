@@ -1,13 +1,13 @@
 {
   "db": "MySQL",
-  "a006cc782350efdb978819a549fa729cd5536934b1bcdca042e5cd2f9b944263": {
+  "15d29c5e56ea8e9eea985d36a535b0a599f9f7c86fe43e9a930037ae369ba103": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Right": 4
+        "Right": 3
       }
     },
-    "query": "INSERT INTO energy (zeit, kohlenstoff, temperatur, raum_id) values (?, ?, ?, ?)"
+    "query": "INSERT INTO temperaturmessung (comessung, temperature, raum_id) values (?, ?, ?)"
   }
 }
