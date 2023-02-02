@@ -18,7 +18,7 @@ use serde::Deserialize;
 
 use chrono::{Duration, Utc};
 
-use sqlx::{Connection, MySqlConnection, MySql, Pool};
+use sqlx::{Connection, MySql, Pool};
 
 use sqlx::types::chrono::DateTime;
 
@@ -34,7 +34,7 @@ struct IpState {
 
 struct DbState(Pool<MySql>);
 
-async fn ip_update(ClientIp(client_ip): ClientIp, State(state): State<Arc<Mutex<SharedState>>>) {
+async fn ip_update(ClientIp(client_ip): ClientIp, State(state): State<Arc<SharedState>>) {
     let mut ip_state_locked = state.ip.lock().await;
     let new_expires = Utc::now() + Duration::seconds(50);
     tracing::debug!(%new_expires, "Updating expire time!");
@@ -46,7 +46,7 @@ async fn ip_update(ClientIp(client_ip): ClientIp, State(state): State<Arc<Mutex<
 }
 
 async fn forward(
-    State(s): State<Arc<Mutex<SharedState>>>,
+    State(s): State<Arc<SharedState>>,
 ) -> Result<Redirect, (StatusCode, Html<&'static str>)> {
     let ip_state_locked = s.ip.lock().await;
     let ip_str = match ip_state_locked.ip {
@@ -82,7 +82,7 @@ struct InsertQueryParams {
 
 async fn insert(
     Query(q): Query<InsertQueryParams>,
-    State(s): State<Arc<Mutex<SharedState>>>,
+    State(s): State<Arc<SharedState>>,
 ) -> (StatusCode, String) {
     match sqlx::query!(
         "INSERT INTO temperaturmessung (comessung, temperature, raum_id) values (?, ?, ?)",
@@ -90,7 +90,7 @@ async fn insert(
         q.temperatur,
         q.raum_id
     )
-    .execute(s.db.0.acquire())
+    .execute(s.db.0.acquire().await)
     .await
     {
         Ok(_) => {
