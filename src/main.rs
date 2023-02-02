@@ -22,6 +22,8 @@ use sqlx::{MySql, Pool};
 
 use sqlx::types::chrono::DateTime;
 
+mod error;
+
 struct SharedState {
     pub ip: Mutex<IpState>,
     pub db: DbState,
@@ -73,23 +75,19 @@ async fn forward(
     ))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct InsertQueryParams {
     temperatur: f64,
     kohlenstoff: i64,
     raum_id: i32,
 }
 
+#[tracing::instrument(skip(s))]
 async fn insert(
     Query(q): Query<InsertQueryParams>,
     State(s): State<Arc<SharedState>>,
-) -> (StatusCode, String) {
-    let mut con = match s.db.0.acquire().await {
-        Ok(x) => x,
-        Err(x) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", x))
-        }
-    };
+) -> error::ServerResult<String> {
+    let mut con = s.db.0.acquire().await?;
     match sqlx::query!(
         "INSERT INTO temperaturmessung (comessung, temperature, raum_id) values (?, ?, ?)",
         q.kohlenstoff,
@@ -100,12 +98,12 @@ async fn insert(
     .await
     {
         Ok(_) => {
-            tracing::info!(co2 = q.kohlenstoff, t = q.temperatur, raum = q.raum_id, "Successfully entered data into database!");
-            (StatusCode::OK, "Success".to_string())
+            tracing::info!("Successfully entered data into database!");
+            Ok("Success".to_string())
         }
         Err(e) => {
             tracing::error!(%e, "Couldn't insert into database!");
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e))
+            Err(e)?
         }
     }
 }
