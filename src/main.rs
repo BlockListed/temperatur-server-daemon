@@ -84,7 +84,7 @@ async fn insert(
     Query(q): Query<InsertQueryParams>,
     State(s): State<Arc<SharedState>>,
 ) -> (StatusCode, String) {
-    let con = match s.db.0.acquire().await {
+    let mut con = match s.db.0.acquire().await {
         Ok(x) => x,
         Err(x) => {
             return (StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", x))
