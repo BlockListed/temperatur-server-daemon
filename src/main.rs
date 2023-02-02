@@ -18,7 +18,7 @@ use serde::Deserialize;
 
 use chrono::{Duration, Utc};
 
-use sqlx::{Connection, MySql, Pool};
+use sqlx::{MySql, Pool};
 
 use sqlx::types::chrono::DateTime;
 
@@ -84,13 +84,19 @@ async fn insert(
     Query(q): Query<InsertQueryParams>,
     State(s): State<Arc<SharedState>>,
 ) -> (StatusCode, String) {
+    let con = match s.db.0.acquire().await {
+        Ok(x) => x,
+        Err(x) => {
+            return (StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e))
+        }
+    }
     match sqlx::query!(
         "INSERT INTO temperaturmessung (comessung, temperature, raum_id) values (?, ?, ?)",
         q.kohlenstoff,
         q.temperatur,
         q.raum_id
     )
-    .execute(s.db.0.acquire().await)
+    .execute(con)
     .await
     {
         Ok(_) => {
