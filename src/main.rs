@@ -18,12 +18,12 @@ use serde::Deserialize;
 
 use chrono::{Duration, Utc};
 
-use sqlx::{Connection, MySqlConnection};
+use sqlx::{Connection, MySqlConnection, MySql, Pool};
 
 use sqlx::types::chrono::DateTime;
 
 struct SharedState {
-    pub ip: IpState,
+    pub ip: Mutex<IpState>,
     pub db: DbState,
 }
 
@@ -32,14 +32,14 @@ struct IpState {
     pub expires: Option<DateTime<Utc>>,
 }
 
-struct DbState(MySqlConnection);
+struct DbState(Pool<MySql>);
 
 async fn ip_update(ClientIp(client_ip): ClientIp, State(state): State<Arc<Mutex<SharedState>>>) {
-    let mut ip_state_locked = state.lock().await;
+    let mut ip_state_locked = state.ip.lock().await;
     let new_expires = Utc::now() + Duration::seconds(50);
     tracing::debug!(%new_expires, "Updating expire time!");
-    ip_state_locked.ip.expires = Some(new_expires);
-    if std::mem::replace(&mut ip_state_locked.deref_mut().ip.ip, Some(client_ip)) != Some(client_ip)
+    ip_state_locked.expires = Some(new_expires);
+    if std::mem::replace(&mut ip_state_locked.deref_mut().ip, Some(client_ip)) != Some(client_ip)
     {
         tracing::info!(ip = %client_ip ,"Updated IP address");
     }
@@ -48,8 +48,8 @@ async fn ip_update(ClientIp(client_ip): ClientIp, State(state): State<Arc<Mutex<
 async fn forward(
     State(s): State<Arc<Mutex<SharedState>>>,
 ) -> Result<Redirect, (StatusCode, Html<&'static str>)> {
-    let ip_state_locked = s.lock().await;
-    let ip_str = match ip_state_locked.ip.ip {
+    let ip_state_locked = s.ip.lock().await;
+    let ip_str = match ip_state_locked.ip {
         Some(x) => {
             format!("{}", x)
         }
@@ -61,8 +61,8 @@ async fn forward(
         }
     };
     // Unwrap is fine, since it will be set at the same time as IP address
-    if ip_state_locked.ip.expires.unwrap() < Utc::now() {
-        tracing::warn!(expires = %ip_state_locked.ip.expires.unwrap(), "Raspberry seems to be offline, since IP expired.");
+    if ip_state_locked.expires.unwrap() < Utc::now() {
+        tracing::warn!(expires = %ip_state_locked.expires.unwrap(), "Raspberry seems to be offline, since IP expired.");
         return Err((
             StatusCode::NOT_FOUND,
             Html("<h1>Raspberry ist wahrscheinlich Offline</h1>"),
@@ -90,7 +90,7 @@ async fn insert(
         q.temperatur,
         q.raum_id
     )
-    .execute(&mut s.lock().await.db.0)
+    .execute(s.db.0.acquire())
     .await
     {
         Ok(_) => {
@@ -115,12 +115,12 @@ async fn main() {
         .finish()
         .init();
 
-    let ip = IpState {
+    let ip = Mutex::new(IpState {
         ip: None,
         expires: None,
-    };
+    });
     let db = DbState(
-        MySqlConnection::connect(
+        Pool::<MySql>::connect(
             std::env::var("DATABASE_URL")
                 .expect("Missing `DATABASE_URL`")
                 .as_str(),
@@ -128,7 +128,7 @@ async fn main() {
         .await
         .expect("Couldn't connect to Database"),
     );
-    let state = Arc::new(Mutex::new(SharedState { ip, db }));
+    let state = Arc::new(SharedState { ip, db });
 
     let app = Router::new()
         .route("/ip_update", post(ip_update))
