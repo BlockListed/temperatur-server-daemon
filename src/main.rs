@@ -87,16 +87,16 @@ async fn insert(
     let con = match s.db.0.acquire().await {
         Ok(x) => x,
         Err(x) => {
-            return (StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", e))
+            return (StatusCode::INTERNAL_SERVER_ERROR, format!("Error: {}", x))
         }
-    }
+    };
     match sqlx::query!(
         "INSERT INTO temperaturmessung (comessung, temperature, raum_id) values (?, ?, ?)",
         q.kohlenstoff,
         q.temperatur,
         q.raum_id
     )
-    .execute(con)
+    .execute(&mut con)
     .await
     {
         Ok(_) => {
